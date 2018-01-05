@@ -1,2 +1,2 @@
 #/bin/sh
-systemctl start sshd.service
+Iptables -F
