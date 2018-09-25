@@ -1,0 +1,8 @@
+$WebAppConfig = Get-AzureRmResource -ResourceName webappname -ResourceType Microsoft.Web/sites/config -ResourceGroupName rsgname -ApiVersion 2018-02-01
+
+$WebAppConfig.Properties.ipSecurityRestrictions = @([PSCustomObject] `
+@{ipAddress = "iprange/24"; action = "Allow" ; tag = "Default" ; priority = "101"; name = "RuleName"; description = "A description"},`
+@{ipAddress = "iprange2/24"; action = "Allow" ; tag = "Default" ; priority = "102"; name = "RuleName"; description = "A description"},`
+@{ipAddress = "iprange3/24"; action = "Allow" ; tag = "Default" ; priority = "103"; name = "RuleName"; description = "A description"}, `
+
+Set-AzureRmResource -ResourceId $WebAppConfig.ResourceId -Properties $WebAppConfig.Properties -ApiVersion 2018-02-01
