@@ -14,7 +14,7 @@ try
     Write-Host "Retrieving the list of installed certificates." -ForegroundColor Cyan
     $certificate = Get-ChildItem -Path Cert:\CurrentUser\My\ | Out-GridView -PassThru
     Write-Host "Fetching the thumbprint..."
-    $cert = $certificate.Thumbprint
+    $cert = $certificate
 
     #Collect number of client certificates to create
     $uinput = Read-Host "`nHow many Client Point-to-Site certificates would you want to create?"
@@ -29,7 +29,7 @@ try
     $clientCerts = foreach ($a in $array)
     {
         New-SelfSignedCertificate -Type Custom -DnsName P2SChildCert -KeySpec Signature `
-        -Subject "CN=$($certificate.Subject)Client$($a)" -KeyExportPolicy Exportable `
+        -Subject "$($certificate.Subject)Client$($a)" -KeyExportPolicy Exportable `
         -HashAlgorithm sha256 -KeyLength 2048 `
         -CertStoreLocation "CERT:\CurrentUser\My" `
         -Signer $cert -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.2")
