@@ -1,4 +1,4 @@
-<#
+   <#
     .SYNOPSIS
     Grabs an existing Root Certificate from the Certificate Store and generates Self-Signed Certificates to be used for Azure Point-to-Site VPN configuration.
        
@@ -18,64 +18,62 @@
     ---------------------------------
      Azure P2S Client Certificate Generator 
     ---------------------------------
-
     OS Verification complete: Windows Server 2016 or higher.
-
     Retrieving the list of installed certificates.
     Fetching the thumbprint...
-
     How many Client Point-to-Site certificates would you want to create?: 3
     Generating 3 Client Certificates from Root Certificate [CN=HCWDRRootCert]....
-
     Client Certificate(s) have been succcessfully generated into the 'Cert:\CurrentUser\My' Store.
-
     Exporting certificates to .pfx format...
-
-
     Client SSL Certificate Export Report:
-
     Common Name  : [Subject]
     CN=MainRootCert
-
     [Issuer]
     CN=RootCert
-
     [Serial Number]
     624C5666A281B198400F4C793C23FF2B
-
     [Not Before]
     9/17/2018 3:09:55 PM
-
     [Not After]
     9/17/2019 3:29:55 PM
-
     [Thumbprint]
     0ECE8A3675C642A1EFEA93E357FCDD837760D104
-
     Certificates : 3
     Directory    : C:\rs-pkgs\
-    Password     : s0m3p4ssw0rd
-
+    Password     : Random
     Subject                 Thumbprint
     -------                 ----------
     CN=ClientCert1 B2F7F52C925493B089AEF03985499E167DBD9307
     CN=ClientCert2 D07C7720E82540329FFC83AD567E86D98ECDD0D8
     CN=ClientCert3 4021DB4143BB2755AB2AE9B3C09F5D08FED6N72B
-
         
     .NOTES
     Minimum OS: 2016 
     Minimum PoSh: 5.0
-
     Version Table:
     Version :: Author             :: Live Date      :: JIRA     :: QC                :: Description
     -----------------------------------------------------------------------------------------------------------
-    1.0     :: Tiago Ferreira     :: 29-Nov-2018    :: 000-00      :: J.T. Shoupe       :: Release
+    1.0     :: Tiago Ferreira     :: 29-Nov-2018    :: 000-00   :: J.T. Shoupe       :: Release
+    1.1     :: Tiago Ferreira     :: 08-Dec-2019    :: 000-00   :: N/A               :: Certificate expiry date updated to 5 years instead of 1 year. Passwords randomized at export time rather than pre-defined password
 #>
+
+Function Get-TempPassword() {
+    Param(
+    [int]$length=10,
+    [string[]]$sourcedata
+    )
+    For ($loop=1; $loop –le $length; $loop++) {
+                $TempPassword+=($sourcedata | Get-Random)
+                }
+    return $TempPassword
+    }
 
 try
 {
     $osVersion = ([environment]::OSVersion.Version).Major
+    $ascii=$NULL;
+
+    For ($a=48;$a –le 122;$a++) {$ascii+=,[char][byte]$a }
 
     if ($osVersion -gt '6')
     {
@@ -83,7 +81,6 @@ try
     Write-Host "---------------------------------" -ForegroundColor Yellow
     Write-Host "  Azure P2S Client Certificate Generator " -ForegroundColor Yellow
     Write-Host "---------------------------------`n" -ForegroundColor Yellow
-
     Write-host "OS Verification complete: Windows Server 2016 or higher.`n" -ForegroundColor Gray
     #Collect user input for which CN they want to use for the Root certificate
     Write-Host "Retrieving the list of installed certificates." -ForegroundColor Cyan
@@ -107,8 +104,7 @@ try
         -Subject "$($certificate.Subject)Client$($a)" -KeyExportPolicy Exportable `
         -HashAlgorithm sha256 -KeyLength 2048 `
         -CertStoreLocation "CERT:\CurrentUser\My" `
-        -Signer $cert -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.2")
-
+        -Signer $cert -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.2") -NotAfter (Get-Date).AddMonths(60)
     }
 
     #Confirmation
@@ -119,13 +115,7 @@ try
     Write-Host "Operating System must be Windows 10/Windows Server 2016 or higher to include the New-SelfSignedCertificate cmdlet." -ForegroundColor Red
     }
 
-    #password for certiticate export
-    $pwd = ConvertTo-SecureString -String "s0m3p4ssw0rd" -Force -AsPlainText
-
-    #directory for certificate export
-    $dir = 'C:\rs-pkgs'
-
-    $clientcerts | Select Subject, Thumbprint
+    $clientcerts | Select-Object Subject, Thumbprint
 
     $Num = 1
     $clientcertsList = @()
@@ -147,16 +137,18 @@ try
     foreach ($i in $clientcertsList)
 
     {
+        $pw = GET-Temppassword -length 10 -sourcedata $ascii
+        $pwd = ConvertTo-SecureString -String $pw -Force -AsPlainText
         $CertPath = "Cert:\Currentuser\My\"+($i.Thumbprint)
         $PfXPath = "C:\rs-pkgs\"+$i.Name+".pfx"
         Get-ChildItem -Path $CertPath  | Export-PfxCertificate -FilePath $PfXPath -Password $pwd
+        Write-Host $i.Name "Password is" $pw
     }
  
     Write-Host "`nClient SSL Certificate Export Report:" -ForegroundColor Yellow
     Write-Host "`nCommon Name  : $($certificate)"
     Write-Host "Certificates : $($clientcertsList.Count)"
     Write-Host "Directory    : C:\rs-pkgs\"
-    Write-Host "Password     : s0m3p4ssw0rd`n"
 
 }
 catch
@@ -165,3 +157,5 @@ catch
     Write-Output "Script failed to run`n"
     Write-Output $ErrMsg
 }
+
+ 
